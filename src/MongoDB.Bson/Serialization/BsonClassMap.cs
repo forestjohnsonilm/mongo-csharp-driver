@@ -1227,12 +1227,12 @@ namespace MongoDB.Bson.Serialization
 
         private void EnsureMemberInfoIsForThisClass(MemberInfo memberInfo)
         {
-            if (memberInfo.DeclaringType != _classType)
+            if (memberInfo.ReflectedType != _classType)
             {
                 var message = string.Format(
                     "The memberInfo argument must be for class {0}, but was for class {1}.",
                     _classType.Name,
-                    memberInfo.DeclaringType.Name);
+                    memberInfo.ReflectedType.Name);
                 throw new ArgumentOutOfRangeException("memberInfo", message);
             }
         }
