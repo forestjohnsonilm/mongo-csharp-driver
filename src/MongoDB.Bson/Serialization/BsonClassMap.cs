@@ -628,7 +628,7 @@ namespace MongoDB.Bson.Serialization
             {
                 throw new ArgumentNullException("constructorInfo");
             }
-            EnsureMemberInfoIsForThisClass(constructorInfo);
+            EnsureMemberDeclaredInThisClass(constructorInfo);
 
             if (_frozen) { ThrowFrozenException(); }
             var creatorMap = _creatorMaps.FirstOrDefault(m => m.MemberInfo == constructorInfo);
@@ -750,7 +750,7 @@ namespace MongoDB.Bson.Serialization
             {
                 throw new ArgumentNullException("methodInfo");
             }
-            EnsureMemberInfoIsForThisClass(methodInfo);
+            EnsureMemberDeclaredInThisClass(methodInfo);
 
             if (_frozen) { ThrowFrozenException(); }
             var creatorMap = _creatorMaps.FirstOrDefault(m => m.MemberInfo == methodInfo);
@@ -867,7 +867,36 @@ namespace MongoDB.Bson.Serialization
             {
                 throw new ArgumentException("MemberInfo must be either a FieldInfo or a PropertyInfo.", "memberInfo");
             }
-            EnsureMemberInfoIsForThisClass(memberInfo);
+            EnsureMemberDeclaredInThisClass(memberInfo);
+
+            if (_frozen) { ThrowFrozenException(); }
+            var memberMap = _declaredMemberMaps.Find(m => m.MemberInfo == memberInfo);
+            if (memberMap == null)
+            {
+                memberMap = new BsonMemberMap(this, memberInfo);
+                _declaredMemberMaps.Add(memberMap);
+            }
+            return memberMap;
+        }
+
+        /// <summary>
+        /// Creates a member map for a member and adds it to the class map. 
+        /// Allows member's declaring type to be different from the class map type.
+        /// Normally that would violate Mongo.Bson's rules, but for immutable types its required, and its ok to do.
+        /// </summary>
+        /// <param name="memberInfo">The member info.</param>
+        /// <returns>The member map (so method calls can be chained).</returns>
+        public BsonMemberMap MapMemberSpecificallyForImmutableTypes(MemberInfo memberInfo)
+        {
+            if (memberInfo == null)
+            {
+                throw new ArgumentNullException("memberInfo");
+            }
+            if (!(memberInfo is FieldInfo) && !(memberInfo is PropertyInfo))
+            {
+                throw new ArgumentException("MemberInfo must be either a FieldInfo or a PropertyInfo.", "memberInfo");
+            }
+            EnsureMemberExistsOnThisClass(memberInfo);
 
             if (_frozen) { ThrowFrozenException(); }
             var memberMap = _declaredMemberMaps.Find(m => m.MemberInfo == memberInfo);
@@ -1051,7 +1080,7 @@ namespace MongoDB.Bson.Serialization
             {
                 throw new ArgumentNullException("constructorInfo");
             }
-            EnsureMemberInfoIsForThisClass(constructorInfo);
+            EnsureMemberDeclaredInThisClass(constructorInfo);
 
             if (_frozen) { ThrowFrozenException(); }
             var creatorMap = _creatorMaps.FirstOrDefault(m => m.MemberInfo == constructorInfo);
@@ -1071,7 +1100,7 @@ namespace MongoDB.Bson.Serialization
             {
                 throw new ArgumentNullException("methodInfo");
             }
-            EnsureMemberInfoIsForThisClass(methodInfo);
+            EnsureMemberDeclaredInThisClass(methodInfo);
 
             if (_frozen) { ThrowFrozenException(); }
             var creatorMap = _creatorMaps.FirstOrDefault(m => m.MemberInfo == methodInfo);
@@ -1112,7 +1141,7 @@ namespace MongoDB.Bson.Serialization
             {
                 throw new ArgumentNullException("memberInfo");
             }
-            EnsureMemberInfoIsForThisClass(memberInfo);
+            EnsureMemberDeclaredInThisClass(memberInfo);
 
             if (_frozen) { ThrowFrozenException(); }
             var memberMap = _declaredMemberMaps.Find(m => m.MemberInfo == memberInfo);
@@ -1225,7 +1254,7 @@ namespace MongoDB.Bson.Serialization
             }
         }
 
-        private void EnsureMemberInfoIsForThisClass(MemberInfo memberInfo)
+        private void EnsureMemberExistsOnThisClass(MemberInfo memberInfo)
         {
             if (memberInfo.ReflectedType != _classType)
             {
@@ -1233,6 +1262,18 @@ namespace MongoDB.Bson.Serialization
                     "The memberInfo argument must be for class {0}, but was for class {1}.",
                     _classType.Name,
                     memberInfo.ReflectedType.Name);
+                throw new ArgumentOutOfRangeException("memberInfo", message);
+            }
+        }
+
+        private void EnsureMemberDeclaredInThisClass(MemberInfo memberInfo)
+        {
+            if (memberInfo.DeclaringType != _classType)
+            {
+                var message = string.Format(
+                    "The memberInfo argument must be declared on class {0}, but was declared on class {1}.",
+                    _classType.Name,
+                    memberInfo.DeclaringType.Name);
                 throw new ArgumentOutOfRangeException("memberInfo", message);
             }
         }
